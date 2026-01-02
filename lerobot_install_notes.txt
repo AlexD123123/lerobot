@@ -2,17 +2,19 @@
 Git issues
 ===========================================================
 # This is the original lerobot code which was updated by us
+https://github.com/AlexD123123/lerobot
+
 
 # To check the current origin branching:
 git remote -v
 
-git remote set-url origin https://github.com/AlexD123123/lerobot.git
-# I renamed the origin to github (where the github/huggingface code is located)
-git remote add origin git@gitlab.com:salexdan/lerobot.git
+# Should result in:
+github  git@github.com:AlexD123123/lerobot.git (fetch)
+github  git@github.com:AlexD123123/lerobot.git (push)
+origin  https://github.com/AlexD123123/lerobot.git (fetch)
+origin  https://github.com/AlexD123123/lerobot.git (push)
 
-git push -u origin main
-# The code can be found in:
-https://github.com/AlexD123123/lerobot
+git remote add github git@github.com:AlexD123123/lerobot.git
 
 ===========================================================
 Documentation
@@ -50,34 +52,24 @@ pip install -e ".[feetech]"
 pip install "numpy<2"  # Required for ROS cv_bridge
 pip install opencv-python pyyaml
 
-# Now do the Aurora camera tutorial installation
-
-
-# Symlink ROS packages
-cd $CONDA_PREFIX/lib/python3.12/site-packages
-for pkg in /opt/ros/jazzy/lib/python3.12/site-packages/*; do
-    ln -sf "$pkg" .
-done
-
-# Set up ROS environment variables
-conda env config vars set LD_LIBRARY_PATH=/opt/ros/jazzy/lib:$LD_LIBRARY_PATH
-conda env config vars set PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:$PYTHONPATH
 
 # Reactivate to apply
 conda deactivate
 conda activate lerobot312
 
 # Test everything
-python -c "import lerobot; import rclpy; import cv2; print('All imports successful!')"
-import numpy; print(f'All imports successful! NumPy version: {numpy.__version__}')"
+python -c "import lerobot; import rclpy; import cv2; print('All imports successful')"
+python -c "import numpy; print(f'All imports successful. NumPy version: {numpy.__version__}')"
 
 #if numpy is not 1.x, run again:
 conda activate lerobot312
 pip install "numpy<2"
 
 
+# Now do the Aurora camera tutorial installation  in aurora_install_notes.txt
+
 ----------------------------------
-Sanity check steps
+Sanity check steps for robot:
 ------------------------------------
 # Check if the connection is OK (ttyACM0, ttyACM1 should be listed)
 # ACM0 should be the leader and ACM1 the follower. If not switch USBs and connect by order
@@ -89,8 +81,9 @@ Sanity check steps
 >sudo usermod -a -G dialout $USER
 
 # Now run the sanity_scripts\check_motors.py script in the lerobot project (code written by Claude)
+python sanity_scripts/check_motors.py
 
-You should get:
+#You should get:
 Port /dev/ttyACM0:
 Scanning for motors with IDs 1-6...
   ✓ Found motor ID 1
@@ -157,10 +150,19 @@ python src/lerobot/scripts/lerobot_teleoperate.py \
   --teleop.id=leader_arm
 
 
+# Troubleshoot: If you are getting some message like:Missing motor IDs:
+  - 5 (expected model: 777)
+
+Full expected motor list (id: model_number):
+{1: 777, 2: 777, 3: 777, 4: 777, 5: 777, 6: 777}
+
+Full found motor list (id: model_number):
+{1: 777, 2: 777, 3: 777, 4: 777, 6: 777}
+unplug power of both arms wait  10 sec and replug
 
 #--------------------------------
 
-# For recording from RGB cameras:
+# For recording lerobot + 2xRGB cameras:
 
 python src/lerobot/scripts/lerobot_record.py \
   --robot.type=so101_follower \
@@ -170,7 +172,7 @@ python src/lerobot/scripts/lerobot_record.py \
   --teleop.type=so101_leader \
   --teleop.port=/dev/ttyACM0 \
   --teleop.id=leader_arm \
-  --dataset.repo_id=local/pick_object \
+  --dataset.repo_id=local/pick_object2 \
   --dataset.single_task="Pick up the object" \
   --dataset.fps=30 \
   --dataset.num_episodes=1 \
@@ -189,7 +191,16 @@ python src/lerobot/scripts/lerobot_dataset_viz.py \
 ========================================
 
 
-# To record with all three cameras:
+# For recording lerobot + 2xRGB cameras + Aurora930 (RGB+depth):
+# TODO: add to the ROS camera IR channel also in the future
+
+# Make sure the Aurora node is already running in a separate terminal using:
+source ~/Documents/Programs/deptrum_ws/install/setup.bash
+ros2 run deptrum-ros-driver-aurora930 aurora930_node
+
+# Then run in a new terminal:
+
+conda activate lerobot312
 
 python src/lerobot/scripts/lerobot_record.py \
   --robot.type=so101_follower \
@@ -199,7 +210,7 @@ python src/lerobot/scripts/lerobot_record.py \
   --teleop.type=so101_leader \
   --teleop.port=/dev/ttyACM0 \
   --teleop.id=leader_arm \
-  --dataset.repo_id=local/pick_object \
+  --dataset.repo_id=local/pick_object2 \
   --dataset.single_task="Pick up the object" \
   --dataset.fps=30 \
   --dataset.num_episodes=1 \
@@ -208,7 +219,8 @@ python src/lerobot/scripts/lerobot_record.py \
   --dataset.push_to_hub=false \
   --display_data=true
 
+# To display the recorded data:
 
   python src/lerobot/scripts/lerobot_dataset_viz.py \
-  --repo-id local/pick_object \
+  --repo-id local/pick_object2 \
   --episode-index 0

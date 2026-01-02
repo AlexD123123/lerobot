@@ -15,3 +15,5 @@
 from .camera import Camera
 from .configs import CameraConfig, ColorMode, Cv2Rotation
 from .utils import make_cameras_from_configs
+
+from lerobot.cameras.ros.camera_ros import ROSCamera, ROSCameraConfig

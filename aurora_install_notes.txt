@@ -55,7 +55,6 @@ deptrum-ros-driver-aurora930-x86_64-0.2.10-source.tar.gz
 *The code is defined for Utuntu 22.04 and we are using 24.04 so some changes needs to be done
 
 
-
 mkdir -p ~/Documents/Programs/deptrum_ws/src
 cd ~/Documents/Programs/deptrum_ws/src
 
@@ -102,7 +101,6 @@ ros2 topic list
 If you do not see such information, the camera is not installed well.
 
 
-
 #Run to see the streaming from the camera:
 ros2 run rqt_image_view rqt_image_view
 
@@ -113,12 +111,12 @@ ros2 run rqt_image_view rqt_image_view
 
 #Check that the code /sanity_scripts/show_aurora_cameras.py exists
 
-# Make sure the lerobot312 env exists (as explained in the lerobot_install_notex.txt"
+# Make sure the lerobot312 env exists (as explained in the lerobot_install_notex.txt)
 
 conda activate lerobot312
 
 # rclpy (ROS Python client) is installed system-wide for Python 3.12, not in conda.
-#We need to make the conda environment able to access the system ROS packages.
+# We need to make the conda environment able to access the system ROS packages.
 
 # Create symlinks to system ROS packages
 mkdir -p $CONDA_PREFIX/lib/python3.12/site-packages
@@ -146,30 +144,27 @@ conda env config vars set PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages
 
 # check permissions of camera:
 lsusb | grep Aurora
-# Note the Bus and Device numbers
+
+# Note the Bus and Device numbers in the command above
 sudo chmod 666 /dev/bus/usb/XXX/YYY
 
 
-NumPy version mismatch! ROS cv_bridge was compiled with NumPy 1.x but you have 2.4. Downgrade NumPy:
+# if you get this error:NumPy version mismatch! ROS cv_bridge was compiled with NumPy 1.x but you have 2.4. Downgrade NumPy:
 pip install "numpy<2"
 
-Step 1:
-# In a new terminal run the Aurora node:
+# Step 1:  In a new terminal run the Aurora node:
 source ~/Documents/Programs/deptrum_ws/install/setup.bash
 ros2 run deptrum-ros-driver-aurora930 aurora930_node
 
-Step 2:
-# In a new terminal run:
+# Step 2: In a new terminal run:
 
 conda deactivate
-conda activate aurora
+conda activate lerobot312
 python /home/alexandra/Documents/Projects/lerobot/sanity_scripts/show_aurora_cameras.py
 
 ------------------------------------
-
-# To create a unified conda env that supports all three cameras:
-# create the lerobot312 config as described in readme_notes.txt
-
+Check that all cameras work:
+------------------------------------
 conda activate lerobot312
 
 # Check separately the RGB cameras:
