@@ -1,0 +1,189 @@
+0. After a lot of struggles I checked the Aurora930 camera on Windows following
+https://docs.hiwonder.com/projects/Aurora930-Pro/en/latest/docs/3.Configuration_and_Usage_in_Windows.html
+I run the installation there, it is simple and works well.
+You can try to skip it (viruses?) but Claude mentioned that it might be necessary to download the firmware.
+Try skipping in and run steps 1-3 and if this does not work, run step 0 first
+
+
+For Ubuntu:
+1. Install ros
+sudo apt install ros-jazzy-ament-cmake
+source /opt/ros/jazzy/setup.bash
+sudo apt install ros-jazzy-orbbec-camera
+
+# The Aurora930 driver should work with Jazzy since it's just a newer ROS 2 version.
+# Continue following the tutorial but substitute jazzy for humble everywhere!
+
+sudo apt install python3-colcon-common-extensions
+
+nano ~/.bashrc
+# add ROS Jazzy setup:
+> source /opt/ros/jazzy/setup.bash
+#save and run:
+source ~/.bashrc
+
+2. Install ROS missing libraries:
+sudo apt update
+
+sudo apt install -y \
+  ros-jazzy-cv-bridge \
+  ros-jazzy-tf2-geometry-msgs \
+  ros-jazzy-vision-opencv \
+  ros-jazzy-image-transport
+
+sudo apt install -y \
+  libopencv-dev \
+  python3-opencv
+
+# Try installing cv-bridge from source
+sudo apt install -y ros-jazzy-cv-bridge-dbgsym
+
+# Also install these
+sudo apt install -y \
+  ros-jazzy-tf2 \
+  ros-jazzy-tf2-ros \
+  ros-jazzy-geometry-msgs
+
+
+sudo apt install -y ros-jazzy-image-view
+
+3. Download Aurora driver from
+https://drive.google.com/drive/folders/1rrcmmeSR_RMuhvtFnmy8zZQXzp5e3sA0
+
+deptrum-ros-driver-aurora930-x86_64-0.2.10-source.tar.gz
+
+*The code is defined for Utuntu 22.04 and we are using 24.04 so some changes needs to be done
+
+
+
+mkdir -p ~/Documents/Programs/deptrum_ws/src
+cd ~/Documents/Programs/deptrum_ws/src
+
+tar -xzf ~/Downloads/deptrum-ros-driver-aurora930*.tar.gz
+
+# remove previous build (should be run each time the build command fails)
+rm -rf build install log
+# build the code
+colcon build --cmake-args -DSTREAM_SDK_TYPE=AURORA930
+
+# if some .h files are missing such as #include <cv_bridge/cv_bridge.h>
+#look for them
+find /opt/ros/jazzy -name "cv_bridge.hpp" -o -name "cv_bridge.h"
+find /opt/ros/jazzy -name "tf2_geometry_msgs.h"  -o -name "tf2_geometry_msgs.hpp"
+
+# The Aurora930 driver was clearly built for ROS Humble (Ubuntu 22.04), not Jazzy (Ubuntu 24.04).
+#If the code looks for .h but .hpp is found, then you need to edit the code and replace
+#<cv_bridge/cv_bridge.h> to <cv_bridge/cv_bridge.hpp> in all locations, until there are no more errors
+# remember before each build to run:
+rm -rf build install log
+
+
+
+3.  Launch the Aurora930 node (listener)
+source ~/Documents/Programs/deptrum_ws/install/setup.bash
+ros2 run deptrum-ros-driver-aurora930 aurora930_node
+
+# Source the updated bashrc
+source ~/.bashrc
+
+
+ros2 topic list
+#You should see topics like:
+/depth/image_raw
+/ir/camera_info
+/ir/image_raw
+/parameter_events
+/points2
+/rgb/camera_info
+/rgb/image_raw
+/rosout
+/tf_static
+
+If you do not see such information, the camera is not installed well.
+
+
+
+#Run to see the streaming from the camera:
+ros2 run rqt_image_view rqt_image_view
+
+# From the droplist select the camera channel. If nothing shows, press "refresh" button and pick again.
+
+
+4. Streaming the data to python:
+
+#Check that the code /sanity_scripts/show_aurora_cameras.py exists
+
+# Make sure the lerobot312 env exists (as explained in the lerobot_install_notex.txt"
+
+conda activate lerobot312
+
+# rclpy (ROS Python client) is installed system-wide for Python 3.12, not in conda.
+#We need to make the conda environment able to access the system ROS packages.
+
+# Create symlinks to system ROS packages
+mkdir -p $CONDA_PREFIX/lib/python3.12/site-packages
+ln -s /opt/ros/jazzy/lib/python3.12/site-packages/rclpy $CONDA_PREFIX/lib/python3.12/site-packages/
+ln -s /opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge $CONDA_PREFIX/lib/python3.12/site-packages/
+
+
+# Symlink all the ROS Python packages we need
+cd $CONDA_PREFIX/lib/python3.12/site-packages
+# Find all ROS packages and symlink them
+for pkg in /opt/ros/jazzy/lib/python3.12/site-packages/*; do
+    ln -sf "$pkg" .
+done
+
+
+# Check if LD_LIBRARY_PATH has ROS
+echo $LD_LIBRARY_PATH | grep jazzy
+
+# If not, manually export it
+export LD_LIBRARY_PATH=/opt/ros/jazzy/lib:$LD_LIBRARY_PATH
+
+# Set environment variables using conda's method
+conda env config vars set LD_LIBRARY_PATH=/opt/ros/jazzy/lib:$LD_LIBRARY_PATH
+conda env config vars set PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:$PYTHONPATH
+
+# check permissions of camera:
+lsusb | grep Aurora
+# Note the Bus and Device numbers
+sudo chmod 666 /dev/bus/usb/XXX/YYY
+
+
+NumPy version mismatch! ROS cv_bridge was compiled with NumPy 1.x but you have 2.4. Downgrade NumPy:
+pip install "numpy<2"
+
+Step 1:
+# In a new terminal run the Aurora node:
+source ~/Documents/Programs/deptrum_ws/install/setup.bash
+ros2 run deptrum-ros-driver-aurora930 aurora930_node
+
+Step 2:
+# In a new terminal run:
+
+conda deactivate
+conda activate aurora
+python /home/alexandra/Documents/Projects/lerobot/sanity_scripts/show_aurora_cameras.py
+
+------------------------------------
+
+# To create a unified conda env that supports all three cameras:
+# create the lerobot312 config as described in readme_notes.txt
+
+conda activate lerobot312
+
+# Check separately the RGB cameras:
+python /home/alexandra/Documents/Projects/lerobot/sanity_scripts/show_cameras.py
+
+# Check aurora cameras:
+python /home/alexandra/Documents/Projects/lerobot/sanity_scripts/show_aurora_cameras.py
+# in a separate terminal run the Aurora node to start streaming
+
+#To show all 3 cameras:
+python /home/alexandra/Documents/Projects/lerobot/sanity_scripts/show_3cameras.py
+#Run in a separate terminal the Aurora node (step 1), without closing the terminal of current terminal
+
+
+
+
+

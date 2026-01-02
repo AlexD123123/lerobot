@@ -1,0 +1,51 @@
+==========================================================================
+Setting the cameras
+==============================================
+Run
+> v4l2-ctl --list-devices
+
+you should get something like this:
+icspring camera: icspring camer (usb-0000:11:00.0-1.3.3):
+        /dev/video2
+        /dev/video3
+        /dev/media1
+
+icspring camera: icspring camer (usb-0000:11:00.0-1.3.4):
+        /dev/video0
+        /dev/video1
+        /dev/media0
+
+Run also:
+python src/lerobot/scripts/lerobot_find_cameras.py
+
+You should get:
+
+Camera #0:
+  Name: OpenCV Camera @ /dev/video0
+  Type: OpenCV
+  Id: /dev/video0
+  Backend api: V4L2
+  Default stream profile:
+    Format: 0.0
+    Fourcc: YUYV
+    Width: 640
+    Height: 480
+    Fps: 30.0
+--------------------
+Camera #1:
+  Name: OpenCV Camera @ /dev/video2
+  Type: OpenCV
+  Id: /dev/video2
+  Backend api: V4L2
+  Default stream profile:
+    Format: 0.0
+    Fourcc: YUYV
+    Width: 640
+    Height: 480
+    Fps: 30.0
+
+
+Image capture finished. Images saved to outputs/captured_images
+
+Now run:
+python sanity_scripts/show_camera.py

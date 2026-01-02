@@ -1,0 +1,214 @@
+==========================================================
+Git issues
+===========================================================
+# This is the original lerobot code which was updated by us
+
+# To check the current origin branching:
+git remote -v
+
+git remote set-url origin https://github.com/AlexD123123/lerobot.git
+# I renamed the origin to github (where the github/huggingface code is located)
+git remote add origin git@gitlab.com:salexdan/lerobot.git
+
+git push -u origin main
+# The code can be found in:
+https://github.com/AlexD123123/lerobot
+
+===========================================================
+Documentation
+===========================================================
+
+https://wiki.seeedstudio.com/lerobot_so100m_new/
+https://docs.hiwonder.com/projects/LeRobot/en/latest/ -
+=============================================================
+Installation
+=============================================================
+NOTE: !!! I did not install any of hiwonder packages, just used the lerobot official code
+
+# Install other packages and miniconda:
+
+
+sudo apt-get install cmake build-essential python3-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev
+libswresample-dev libavfilter-dev
+
+wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+bash Miniforge3-$(uname)-$(uname -m).sh
+
+
+
+conda create -y -n lerobot312 python=3.12
+conda activate lerobot312
+
+# Install LeRobot dependencies
+conda install -y ffmpeg -c conda-forge
+
+cd ~/Documents/Projects/lerobot
+pip install -e ".[feetech]"
+
+
+# Install Aurora930 dependencies
+pip install "numpy<2"  # Required for ROS cv_bridge
+pip install opencv-python pyyaml
+
+# Now do the Aurora camera tutorial installation
+
+
+# Symlink ROS packages
+cd $CONDA_PREFIX/lib/python3.12/site-packages
+for pkg in /opt/ros/jazzy/lib/python3.12/site-packages/*; do
+    ln -sf "$pkg" .
+done
+
+# Set up ROS environment variables
+conda env config vars set LD_LIBRARY_PATH=/opt/ros/jazzy/lib:$LD_LIBRARY_PATH
+conda env config vars set PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:$PYTHONPATH
+
+# Reactivate to apply
+conda deactivate
+conda activate lerobot312
+
+# Test everything
+python -c "import lerobot; import rclpy; import cv2; print('All imports successful!')"
+import numpy; print(f'All imports successful! NumPy version: {numpy.__version__}')"
+
+#if numpy is not 1.x, run again:
+conda activate lerobot312
+pip install "numpy<2"
+
+
+----------------------------------
+Sanity check steps
+------------------------------------
+# Check if the connection is OK (ttyACM0, ttyACM1 should be listed)
+# ACM0 should be the leader and ACM1 the follower. If not switch USBs and connect by order
+> ls -l /dev/ttyACM*
+
+>sudo chmod 666 /dev/ttyACM0
+>sudo chmod 666 /dev/ttyACM1
+
+>sudo usermod -a -G dialout $USER
+
+# Now run the sanity_scripts\check_motors.py script in the lerobot project (code written by Claude)
+
+You should get:
+Port /dev/ttyACM0:
+Scanning for motors with IDs 1-6...
+  ✓ Found motor ID 1
+  ✓ Found motor ID 2
+  ✓ Found motor ID 3
+  ✓ Found motor ID 4
+  ✓ Found motor ID 5
+  ✓ Found motor ID 6
+Port /dev/ttyACM1:
+Scanning for motors with IDs 1-6...
+  ✓ Found motor ID 1
+  ✓ Found motor ID 2
+  ✓ Found motor ID 3
+  ✓ Found motor ID 4
+  ✓ Found motor ID 5
+  ✓ Found motor ID 6
+
+-------------------------------------------------------
+# Show devices
+ls /dev/ttyACM*
+
+
+# For independent calibration per arm (no need):
+# Before calibrating (start c+ enter) make sure that the position is in the middle.
+# Do not force the robot
+# be sure that the values are similar in both robots - if not:
+# - remove the files from the /.cache/huggingface/lerobot/calibration and set the "middle position"
+of the robots to be similar.
+
+
+# Calibrate the leader arm (ACM0)
+python src/lerobot/scripts/lerobot_calibrate.py \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM0 \
+  --robot.id=leader_arm
+
+# Calibrate the follower arm (ACM1)
+python src/lerobot/scripts/lerobot_calibrate.py \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM1 \
+  --robot.id=follower_arm
+
+
+
+You should get this result:
+  Calibration saved to /home/alexandra/.cache/huggingface/lerobot/calibration/robots/so101_follower/follower_arm.json
+  Calibration saved to /home/alexandra/.cache/huggingface/lerobot/calibration/robots/so101_follower/leader_arm.json
+
+
+
+
+# To teleoperate the robot:
+# This will ask you to recalibrate - very annoying.
+# If the min/max values are the same remove power, wait for 10s and reattach.
+# Make sure that the gripper is slightly open on both robots when starting the calibration.
+
+
+python src/lerobot/scripts/lerobot_teleoperate.py \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM1 \
+  --robot.id=follower_arm \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/ttyACM0 \
+  --teleop.id=leader_arm
+
+
+
+#--------------------------------
+
+# For recording from RGB cameras:
+
+python src/lerobot/scripts/lerobot_record.py \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM1 \
+  --robot.id=follower_arm \
+  --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0, "width": 1920, "height": 1080, "fps": 30, "fourcc": "MJPG"}, "wrist": {"type": "opencv", "index_or_path": 2, "width": 640, "height": 480, "fps": 30}}' \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/ttyACM0 \
+  --teleop.id=leader_arm \
+  --dataset.repo_id=local/pick_object \
+  --dataset.single_task="Pick up the object" \
+  --dataset.fps=30 \
+  --dataset.num_episodes=1 \
+  --dataset.episode_time_s=360 \
+  --dataset.reset_time_s=10 \
+  --dataset.push_to_hub=false \
+  --display_data=true
+
+
+#To visualize episode:
+
+python src/lerobot/scripts/lerobot_dataset_viz.py \
+  --repo-id local/pick_apple \
+  --episode-index 0
+
+========================================
+
+
+# To record with all three cameras:
+
+python src/lerobot/scripts/lerobot_record.py \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM1 \
+  --robot.id=follower_arm \
+  --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0, "width": 1920, "height": 1080, "fps": 30, "fourcc": "MJPG"}, "wrist": {"type": "opencv", "index_or_path": 2, "width": 640, "height": 480, "fps": 30}, "aurora_rgb": {"type": "ros", "topic": "/rgb/image_raw", "width": 320, "height": 200, "fps": 30}, "aurora_depth": {"type": "ros", "topic": "/depth/image_raw", "width": 320, "height": 200, "fps": 30, "encoding": "passthrough"}}' \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/ttyACM0 \
+  --teleop.id=leader_arm \
+  --dataset.repo_id=local/pick_object \
+  --dataset.single_task="Pick up the object" \
+  --dataset.fps=30 \
+  --dataset.num_episodes=1 \
+  --dataset.episode_time_s=30 \
+  --dataset.reset_time_s=10 \
+  --dataset.push_to_hub=false \
+  --display_data=true
+
+
+  python src/lerobot/scripts/lerobot_dataset_viz.py \
+  --repo-id local/pick_object \
+  --episode-index 0
